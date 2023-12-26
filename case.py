@@ -44,6 +44,9 @@ class Case:
         ), f"difficulty is {difficulty} is not an integer between 1 and 10"
         self.difficulty = difficulty
 
+    def set_base_compensation(self, comp) -> None:
+        self.base_compensation = comp
+
     def add_bonus(self, amount: int) -> None:
         self.bonus = self.bonus + amount
 
@@ -56,6 +59,7 @@ class ScheduleGenerator:
         # regular compensation is 100 dollars an hour
         self.hourly_rate = 100
         self.schedule = []
+        self.schedule_matrix = None
 
     def generate_schedule(self) -> List[Case]:
         # Create a random number generator instance
@@ -69,29 +73,39 @@ class ScheduleGenerator:
         )
         cases_ends = cases_starts + cases_difficulty
         cases_ends = np.where(cases_ends > 24, 24, cases_ends)
-        arrays = [cases_difficulty, cases_starts, cases_ends]
-        data = np.stack(arrays, axis=0)
-        print(data)
+
+        cases_lengths = cases_ends - cases_starts
+        if self.compensation_scheme == "regular":
+            cases_comp = self.hourly_rate * cases_lengths
+
+        arrays = [cases_difficulty, cases_starts, cases_ends, cases_comp]
+        self.schedule_matrix = np.stack(arrays, axis=0)
         cases = []
         for i in range(self.num_cases):
-            print(data[:, i])
-            difficulty, start, end = data[:, i]
+            difficulty, start, end, comp = self.schedule_matrix[:, i]
             c = Case()
             c.set_difficulty(difficulty)
             c.set_end(end)
             c.set_start(start)
+            if self.compensation_scheme == "regular":
+                c.set_base_compensation(comp)
         self.schedule = cases
 
     def get_schedule(self):
         return self.schedule
 
     def print_schedule(self):
-        pass
+        print(self.schedule_matrix)
+
+    def planned_total_compensation(self):
+        return np.sum(self.schedule_matrix[3, :])
 
 
 def main():
     s = ScheduleGenerator()
     s.generate_schedule()
+    s.print_schedule()
+    print(s.planned_total_compensation())
 
 
 if __name__ == "__main__":
